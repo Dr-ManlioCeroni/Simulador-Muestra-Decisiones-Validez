@@ -3,7 +3,7 @@
 
   <head>
     <meta charset="UTF-8">
-    <title>Simulador de Decisiones y Validez Estadística</title>
+    <title>Simulador: Muestra, Decidión, Validez</title>
     
 
   </head>
@@ -52,6 +52,7 @@
         .val-display { color: var(--primary); font-weight: bold; float: right; font-size: 1.1rem; }
         
         .info-note { background: #eef6ff; border-left: 6px solid var(--primary); padding: 18px; margin-top: 20px; font-size: 0.95rem; border-radius: 0 8px 8px 0; }
+        .p-interpretation { font-size: 0.8rem; color: #d32f2f; margin-top: 5px; font-weight: 600; min-height: 2.4em; }
         
         .btn-execute { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1rem; margin-top: 15px; box-shadow: 0 4px 0 #b32d2d; transition: all 0.2s; }
         .btn-execute:active { transform: translateY(3px); box-shadow: 0 1px 0 #b32d2d; }
@@ -62,7 +63,6 @@
 <body>
 
 <div class="container">
-    
     <div class="header-main">
         <div class="dashboard-title">Simulador de Decisiones y Validez Estadística</div>
         <div class="author-info">Elaborado por: Dr. Manlio Ceroni | Profesor de Doctorado</div>
@@ -89,6 +89,11 @@
                     <input type="range" id="err1" min="1" max="20" value="5" oninput="calcPlan()">
                 </div>
                 <div class="control-group">
+                    <label>Proporción esperada (p): <span class="val-display" id="dispP1">0.50</span></label>
+                    <input type="range" id="prop1" min="0.01" max="0.99" step="0.01" value="0.50" oninput="calcPlan()">
+                    <div id="pDesc" class="p-interpretation">Máxima Variabilidad: Al no conocer la población, asumimos 50/50 para seguridad.</div>
+                </div>
+                <div class="control-group">
                     <label>Universo (N):</label>
                     <input type="number" id="pop1" value="1000000" oninput="calcPlan()">
                 </div>
@@ -113,7 +118,6 @@
     <div class="section">
         <h2>🎲 Módulo 2: Análisis de Variabilidad y Estabilidad</h2>
         <div class="module-desc">Este módulo pretende simular el comportamiento de los datos reales para entender cómo el tamaño de la muestra afecta directamente la estabilidad de los estadísticos (media y desviación).</div>
-
         <div class="layout">
             <div class="controls">
                 <div class="control-group">
@@ -131,8 +135,7 @@
                 </div>
                 <div id="plot2" style="height:350px;"></div>
                 <div class="info-note" style="background: #f1f8e9; border-left-color: var(--success);">
-                    <strong>Análisis del Histograma:</strong> 
-                    Observe que al aumentar el <em>n</em>, las barras de frecuencia tienden a formar una figura simétrica (Normalidad). Si las barras están muy separadas o son desiguales, su estudio carece de <strong>estabilidad</strong>, lo que significa que si repitiera la encuesta mañana, obtendría resultados totalmente diferentes.
+                    <strong>Análisis del Histograma:</strong> Observe que al aumentar el <em>n</em>, las barras de frecuencia tienden a formar una figura simétrica (Normalidad).
                 </div>
             </div>
         </div>
@@ -140,8 +143,7 @@
 
     <div class="section" style="border: 2px solid var(--primary);">
         <h2>🧠 Módulo 3: Consultor de Estrategia Científica</h2>
-        <div class="module-desc">Este módulo pretende actuar como un asesor metodológico virtual, evaluando la coherencia entre el tipo de estudio doctoral, la población y la muestra propuesta para dar un veredicto de viabilidad.</div>
-        
+        <div class="module-desc">Este módulo pretende actuar como un asesor metodológico virtual para evaluar la coherencia doctoral.</div>
         <div class="layout">
             <div class="controls">
                 <div class="control-group">
@@ -180,14 +182,34 @@
         const confKey = document.getElementById('conf1').value;
         const z = zTable[confKey];
         const e = document.getElementById('err1').value / 100;
-        const p = 0.5, N = parseInt(document.getElementById('pop1').value);
+        const p = parseFloat(document.getElementById('prop1').value);
+        const q = 1 - p;
+        const N = parseInt(document.getElementById('pop1').value);
+        
         document.getElementById('dispErr1').innerText = (e*100).toFixed(0) + "%";
-        document.getElementById('formulaBox').innerHTML = `n = [${z}² * 0.5 * 0.5] / ${e}²`;
-        let n = (Math.pow(z, 2) * p * (1-p)) / Math.pow(e, 2);
+        document.getElementById('dispP1').innerText = p.toFixed(2);
+        
+        // Explicación dinámica de P
+        const pDesc = document.getElementById('pDesc');
+        if(p === 0.5) {
+            pDesc.innerText = "Máxima Variabilidad: Escenario conservador (Población dividida). Requiere muestra máxima.";
+            pDesc.style.color = "#d32f2f";
+        } else if(p < 0.3 || p > 0.7) {
+            pDesc.innerText = "Alta Homogeneidad: La población tiende a una respuesta clara. La muestra necesaria baja.";
+            pDesc.style.color = "#28a745";
+        } else {
+            pDesc.innerText = "Incertidumbre Media: Existe una tendencia previa, ajustando el tamaño de muestra.";
+            pDesc.style.color = "#0068c9";
+        }
+
+        document.getElementById('formulaBox').innerHTML = `n = [${z}² * ${p.toFixed(2)} * ${q.toFixed(2)}] / ${e}²`;
+        
+        let n = (Math.pow(z, 2) * p * q) / Math.pow(e, 2);
         if (N < 1000000) n = (n * N) / (n + N - 1);
         n = Math.ceil(n);
         document.getElementById('resN1').innerText = n;
-        const se = Math.sqrt((p*(1-p))/n);
+        
+        const se = Math.sqrt((p*q)/n);
         let x = [], y = [];
         for(let i=p-0.3; i<=p+0.3; i+=0.005) { x.push(i*100); y.push( Math.exp(-0.5 * Math.pow((i-p)/se, 2)) ); }
         Plotly.newPlot('plot1', [{x, y, fill: 'tozeroy', line: {color: '#0068c9'}}], 
@@ -219,17 +241,17 @@
         const perc = (n/N)*100;
 
         if (n >= N && N > 0) {
-            msg = "🌟 <strong>CENSO DETECTADO:</strong> Precisión absoluta. Al medir a todo el universo, los estadísticos se convierten en parámetros reales.";
-            just = "Fundamento: Saturación Poblacional. Se elimina el error aleatorio.";
+            msg = "🌟 <strong>CENSO DETECTADO:</strong> Precisión absoluta.";
+            just = "Fundamento: Saturación Poblacional.";
         } else if (type === 'corr' && n < 100) {
-            msg = "⚠️ <strong>ALERTA METODOLÓGICA:</strong> Un estudio correlacional con n < 100 tiene bajo poder estadístico para detectar asociaciones reales.";
-            just = "Fundamento: Teorema del Límite Central e Inferencia Proporcional.";
+            msg = "⚠️ <strong>ALERTA METODOLÓGICA:</strong> Bajo poder estadístico.";
+            just = "Fundamento: Teorema del Límite Central.";
         } else if (perc < 5 && N > 500) {
-            msg = "📉 <strong>RIESGO DE SESGO:</strong> Representatividad débil. La muestra es muy pequeña respecto al volumen del universo.";
-            just = "Fundamento: Factor de Corrección para Poblaciones Finitas (FPC).";
+            msg = "📉 <strong>RIESGO DE SESGO:</strong> Representatividad débil.";
+            just = "Fundamento: Factor de Corrección (FPC).";
         } else {
-            msg = "✅ <strong>DISEÑO ROBUSTO:</strong> Su propuesta cumple con los estándares de rigor doctoral para generalizar hallazgos.";
-            just = "Fundamento: Ecuación de Cochran optimizada para confianza 95%.";
+            msg = "✅ <strong>DISEÑO ROBUSTO:</strong> Cumple estándares doctorales.";
+            just = "Fundamento: Ecuación de Cochran.";
         }
         document.getElementById('advText').innerHTML = msg;
         document.getElementById('advJustification').innerHTML = "<strong>Respaldo:</strong> " + just;
